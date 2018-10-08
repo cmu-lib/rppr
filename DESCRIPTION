@@ -1,0 +1,20 @@
+Package: rppr
+Title: Rural Postman Problem Solver
+Version: 0.0.0.9000
+Authors@R:
+    person(given = "Matthew Lincoln",
+           role = c("aut", "cre"),
+           email = "mlincoln@andrew.cmu.edu",
+           comment = c(ORCID = "0000-0002-4387-3384"))
+Description: Implements a solution to the rural postman problem,
+    finding efficient paths through a network that visit a specified
+    subset of edges.
+License: MIT + file LICENSE
+Depends:
+    R (>= 3.5.1)
+Imports: 
+    tidygraph
+Suggests: 
+    testthat
+Encoding: UTF-8
+LazyData: true
