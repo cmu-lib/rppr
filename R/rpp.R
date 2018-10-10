@@ -100,9 +100,9 @@ complete_sub_graph <- function(graph) {
     mutate(
       original = FALSE,
       # Calculate the weight of each of these new edges based on the path
-      # distance between both nodes in the original network. N.B. the pointnode
-      # IDs must be the ones from the original graph, not the subnetwork, ergo
-      # using from_id and to_id
+      # distance between both nodes in the original network. N.B. the node IDs
+      # must be the ones from the original graph, not the subnetwork, ergo using
+      # from_id and to_id
       weight = map2_dbl(from_id, to_id, check_path_weight, graph = graph),
       target = FALSE)
 
