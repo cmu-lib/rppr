@@ -44,10 +44,11 @@ g <- g %>%
 
 showme <- function(g) {
   ggraph(g, layout = "fr") +
-    geom_edge_link(aes(color = target, alpha = original),
-                   arrow = arrow(length = unit(4, 'mm')),
-                   start_cap = circle(3, 'mm'),
-                   end_cap = circle(3, 'mm')) +
+    geom_edge_arc(aes(color = target, alpha = original),
+                  arrow = arrow(length = unit(4, 'mm')),
+                  start_cap = circle(3, 'mm'),
+                  end_cap = circle(3, 'mm'),
+                  curvature = 0.4) +
     geom_node_point() +
     scale_edge_colour_manual(values = c("TRUE" = "red", "FALSE" = "gray"), na.value = "gray", guide = FALSE) +
     scale_edge_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.2, guide = FALSE)) +
