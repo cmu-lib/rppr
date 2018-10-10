@@ -70,6 +70,7 @@ showme(subnetwork)
 # original network
 
 check_path_weight <- function(source, destination, graph) {
+  message(source, "---", destination)
   graph %>%
     activate(nodes) %>%
     mutate(distance = node_distance_to(nodes = destination, weights = weight)) %>%
@@ -79,6 +80,8 @@ check_path_weight <- function(source, destination, graph) {
 }
 
 complete_sub_graph <- function(graph) {
+  plan(multiprocess)
+
   g_edges <- as_tibble(graph, active = "edges")
   node_crosswalk <- bind_rows(
     select(g_edges, new = from, old = from_id),
@@ -104,7 +107,7 @@ complete_sub_graph <- function(graph) {
       # distance between both nodes in the original network. N.B. the node IDs
       # must be the ones from the original graph, not the subnetwork, ergo using
       # from_id and to_id
-      weight = map2_dbl(from_id, to_id, check_path_weight, graph = graph),
+      weight = future_map2_dbl(from_id, to_id, check_path_weight, graph = graph, .progress = TRUE),
       target = FALSE)
 
   bind_edges(graph, completed)
