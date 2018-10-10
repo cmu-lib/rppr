@@ -117,6 +117,22 @@ cg <- complete_sub_graph(g)
 
 showme(cg)
 
+# Simplify this "completed" network by eliminating all artificial edges for which
+# 1) the cost is over some threshold k (?)
+# 2) One parallel edge if it has the same cost
+
+prune_complete_network <- function(graph, k = Inf) {
+  graph %>%
+    activate(edges) %>%
+    # Always keep original edges
+    filter(original == TRUE | weight < k)
+}
+
+cg
+pg <- prune_complete_network(cg, k = 30)
+pg
+showme(cg)
+
 mst <- to_minimum_spanning_tree(cg, weights = weight)
 showme(mst_g)
 
