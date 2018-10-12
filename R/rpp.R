@@ -40,7 +40,14 @@ g <- g %>%
     to_id = to,
     original = TRUE,
     weight = sample.int(10, size = ecount(g), replace = TRUE),
-    target = e)
+    target = e) %>%
+  activate(nodes) %>%
+  mutate(adjacent_to_selected = map_local_lgl(.f = function(neighborhood, ...) {
+    neighborhood %>%
+      as_tibble(active = "edges") %>%
+      pull(target) %>%
+      any()
+  }))
 
 showme <- function(g) {
   ggraph(g, layout = "fr") +
@@ -49,7 +56,7 @@ showme <- function(g) {
                   start_cap = circle(3, 'mm'),
                   end_cap = circle(3, 'mm'),
                   curvature = 0.4) +
-    geom_node_point() +
+    geom_node_label(aes(label = pid)) +
     scale_edge_colour_manual(values = c("TRUE" = "red", "FALSE" = "gray"), na.value = "gray", guide = FALSE) +
     scale_edge_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.2, guide = FALSE)) +
     theme_graph()
@@ -69,17 +76,37 @@ showme(subnetwork)
 # have weight defined as shortest path between each of its nodes from the
 # original network
 
+full_path_weights <- function(graph) {
+  selected_nodes <- graph %>%
+    as_tibble(active = "nodes") %>%
+    filter(adjacent_to_selected) %>%
+    pull(pid)
+
+  map_df(selected_nodes, function(x) {
+    graph %>%
+      activate(nodes) %>%
+      mutate(distance = node_distance_to(x)) %>%
+      as_tibble() %>%
+      select(from = pid, distance)
+  }, .id = "to") %>%
+    mutate_at(vars(to), as.integer)
+}
+
+path_weight_lookup <- full_path_weights(g)
+
+
 check_path_weight <- function(source, destination, graph) {
   message(source, "---", destination)
   graph %>%
-    activate(nodes) %>%
+    activate(edges) %>%
+    filter(from = source) %>%
     mutate(distance = node_distance_to(nodes = destination, weights = weight)) %>%
     as_tibble() %>%
     slice(source) %>%
     pull(distance)
 }
 
-complete_sub_graph <- function(graph) {
+complete_sub_graph <- function(graph, original_graph) {
   plan(multiprocess)
 
   g_edges <- as_tibble(graph, active = "edges")
@@ -107,15 +134,31 @@ complete_sub_graph <- function(graph) {
       # distance between both nodes in the original network. N.B. the node IDs
       # must be the ones from the original graph, not the subnetwork, ergo using
       # from_id and to_id
-      weight = future_map2_dbl(from_id, to_id, check_path_weight, graph = graph, .progress = TRUE),
+      weight = map2_dbl(from_id, to_id, function(x, y) {
+        path_weight_lookup %>%
+          filter(from == from_id, to == to_id) %>%
+          pull(distance)
+      }),
       target = FALSE)
 
   bind_edges(graph, completed)
 }
 
-cg <- complete_sub_graph(g)
+cg <- complete_sub_graph(subnetwork, original_graph = g)
 
 showme(cg)
+
+mst_edges <- to_minimum_spanning_tree(cg, weights = weight)[[1]]
+showme(mst_edges)
+
+
+
+%>%
+  activate(edges) %>%
+  mutate(mst = TRUE)
+
+ng <- cg %>%
+  bind_edges(mst_edges)
 
 # Simplify this "completed" network by eliminating all artificial edges for which
 # 1) the cost is over some threshold k (?)
