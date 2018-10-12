@@ -76,6 +76,8 @@ showme(subnetwork)
 # have weight defined as shortest path between each of its nodes from the
 # original network
 
+# TODO before calculating weight, REMOVE bridges so they can't be crossed
+# (this may lead to unreachable places, maybe?)
 full_path_weights <- function(graph) {
   selected_nodes <- graph %>%
     as_tibble(active = "nodes") %>%
