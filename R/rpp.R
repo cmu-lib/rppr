@@ -26,8 +26,9 @@ library(purrr)
 library(digest)
 library(dplyr)
 
-g <- play_erdos_renyi(n = 30, 0.07)
+g <- play_erdos_renyi(n = 30, 0.1, directed = FALSE)
 e <- seq_len(ecount(g)) %in% sample.int(ecount(g), size = 10)
+which_e <- which(e)
 
 g <- g %>%
   activate(nodes) %>%
@@ -47,12 +48,12 @@ g <- g %>%
       as_tibble(active = "edges") %>%
       pull(target) %>%
       any()
-  }))
+  })) %>%
+  remove_unreachable_nodes()
 
 showme <- function(g) {
   ggraph(g, layout = "fr") +
-    geom_edge_arc(aes(color = target, alpha = original),
-                  arrow = arrow(length = unit(4, 'mm')),
+    geom_edge_link(aes(color = target, alpha = original),
                   start_cap = circle(3, 'mm'),
                   end_cap = circle(3, 'mm'),
                   curvature = 0.4) +
@@ -101,7 +102,8 @@ check_path_weight <- function(source, destination, graph) {
   message(source, "---", destination)
   graph %>%
     activate(edges) %>%
-    filter(from = source) %>%
+    filter(!(target)) %>%
+    activate(nodes) %>%
     mutate(distance = node_distance_to(nodes = destination, weights = weight)) %>%
     as_tibble() %>%
     slice(source) %>%
@@ -110,6 +112,10 @@ check_path_weight <- function(source, destination, graph) {
 
 complete_sub_graph <- function(graph, original_graph) {
   plan(multiprocess)
+
+  avoid_edges <- graph %>%
+    as_tibble(active = "edges") %>%
+    pull(target)
 
   g_edges <- as_tibble(graph, active = "edges")
   node_crosswalk <- bind_rows(
