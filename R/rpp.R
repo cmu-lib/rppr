@@ -84,10 +84,12 @@ full_path_weights <- function(graph) {
     filter(adjacent_to_selected) %>%
     pull(pid)
 
-  map_df(selected_nodes, function(x) {
-    graph %>%
+  res <- map_df(selected_nodes, function(x) {
+   graph %>%
+      activate(edges) %>%
+      filter(target == FALSE) %>%
       activate(nodes) %>%
-      mutate(distance = node_distance_to(x)) %>%
+      mutate(distance = node_distance_to(match(x, pid), weights = weight)) %>%
       as_tibble() %>%
       select(from = pid, distance)
   }, .id = "to") %>%
