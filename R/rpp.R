@@ -26,9 +26,10 @@ library(purrr)
 library(digest)
 library(dplyr)
 
-g <- play_erdos_renyi(n = 30, 0.1, directed = FALSE)
-e <- seq_len(ecount(g)) %in% sample.int(ecount(g), size = 10)
-which_e <- which(e)
+n_nodes <- 20
+g <- play_geometry(n = n_nodes, radius = 0.25, torus = TRUE)
+which_e <- sample.int(ecount(g), size = 10)
+e <- seq_len(ecount(g)) %in% which_e
 
 g <- g %>%
   activate(nodes) %>%
@@ -52,17 +53,19 @@ g <- g %>%
   remove_unreachable_nodes()
 
 showme <- function(g) {
-  ggraph(g, layout = "fr") +
+  ggraph(g, layout = "nicely") +
     geom_edge_link(aes(color = target, alpha = original),
                   start_cap = circle(3, 'mm'),
                   end_cap = circle(3, 'mm')) +
-    geom_node_label(aes(label = pid)) +
+    geom_node_point() +
+    # geom_node_label(aes(label = pid)) +
     scale_edge_colour_manual(values = c("TRUE" = "red", "FALSE" = "gray"), na.value = "gray", guide = FALSE) +
-    scale_edge_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.2, guide = FALSE)) +
+    scale_edge_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.2), guide = FALSE) +
     theme_graph()
 }
 
 showme(g)
+
 # Create subnetwork of required edges and their nodes
 
 subnetwork <- g %>%
