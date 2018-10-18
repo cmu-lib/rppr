@@ -4,76 +4,37 @@
 #' @param edgeset A vector of edge ids that match to the edge attribute `name` in `graph`
 #'
 #' @return An ordered vector of edge IDs
-#'
-#' @import tidygraph
 rpp <- function(graph, edgeset) {
 
 }
 
+#' @import tidygraph
 remove_unreachable_nodes <- function(graph) {
   graph %>%
     activate(nodes) %>%
     filter(!node_is_isolated())
 }
 
-set.seed(10)
-
-library(tidygraph)
-library(ggraph)
-library(igraph)
-library(tidyr)
-library(purrr)
-library(digest)
-library(dplyr)
-
-n_nodes <- 20
-g <- play_geometry(n = n_nodes, radius = 0.25, torus = TRUE)
-which_e <- sample.int(ecount(g), size = 10)
-e <- seq_len(ecount(g)) %in% which_e
-
-g <- g %>%
-  activate(nodes) %>%
-  # Create a persistent ID so that we can more easily track nodes through
-  # resampling
-  mutate(pid = row_number()) %>%
-  activate(edges) %>%
-  mutate(
-    from_id = from,
-    to_id = to,
-    original = TRUE,
-    weight = sample.int(10, size = ecount(g), replace = TRUE),
-    target = e) %>%
-  activate(nodes) %>%
-  mutate(adjacent_to_selected = map_local_lgl(.f = function(neighborhood, ...) {
-    neighborhood %>%
-      as_tibble(active = "edges") %>%
-      pull(target) %>%
-      any()
-  })) %>%
-  remove_unreachable_nodes()
-
+#' @import ggraph
 showme <- function(g) {
   ggraph(g, layout = "nicely") +
-    geom_edge_link(aes(color = target, alpha = original),
+    geom_edge_link(aes(color = target, alpha = original, width = weight),
                   start_cap = circle(3, 'mm'),
                   end_cap = circle(3, 'mm')) +
-    geom_node_point() +
-    # geom_node_label(aes(label = pid)) +
+    geom_node_label(aes(label = pid)) +
     scale_edge_colour_manual(values = c("TRUE" = "red", "FALSE" = "gray"), na.value = "gray", guide = FALSE) +
     scale_edge_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.2), guide = FALSE) +
     theme_graph()
 }
 
-showme(g)
-
 # Create subnetwork of required edges and their nodes
-
-subnetwork <- g %>%
-  activate(edges) %>%
-  filter(target == TRUE) %>%
-  remove_unreachable_nodes()
-subnetwork
-showme(subnetwork)
+#' @import tidygraph
+create_subnetwork <- function(graph) {
+  graph %>%
+    activate(edges) %>%
+    filter(target == TRUE) %>%
+    remove_unreachable_nodes()
+}
 
 # Complete this network by adding artificial edges. New artificial edges should
 # have weight defined as shortest path between each of its nodes from the
@@ -81,53 +42,56 @@ showme(subnetwork)
 
 # TODO before calculating weight, REMOVE bridges so they can't be crossed
 # (this may lead to unreachable places, maybe?)
+#' @import tidygraph dplyr furrr future
 full_path_weights <- function(graph) {
+  plan(multiprocess)
   selected_nodes <- graph %>%
     as_tibble(active = "nodes") %>%
     filter(adjacent_to_selected) %>%
-    pull(pid)
+    pull(pid) %>%
+    set_names()
 
-  res <- map_df(selected_nodes, function(x) {
-   graph %>%
+  res <- future_map_dfr(selected_nodes, function(x) {
+    search_index <- match(x, as_tibble(graph, "nodes")$pid)
+    graph %>%
       activate(edges) %>%
       filter(target == FALSE) %>%
       activate(nodes) %>%
-      mutate(distance = node_distance_to(match(x, pid), weights = weight)) %>%
+      mutate(distance = node_distance_to(search_index, weights = NULL)) %>%
       as_tibble() %>%
       select(from = pid, distance)
-  }, .id = "to") %>%
+  }, .id = "to", .progress = TRUE) %>%
     mutate_at(vars(to), as.integer)
 }
 
-path_weight_lookup <- full_path_weights(g)
+#' @import assertthat dplyr
+path_weight_lookup <- function(from_id, to_id, weight_table) {
+  assert_that(is.count(from_id))
+  assert_that(is.count(to_id))
 
-
-check_path_weight <- function(source, destination, graph) {
-  message(source, "---", destination)
-  graph %>%
-    activate(edges) %>%
-    filter(!(target)) %>%
-    activate(nodes) %>%
-    mutate(distance = node_distance_to(nodes = destination, weights = weight)) %>%
-    as_tibble() %>%
-    slice(source) %>%
+  res <- weight_table %>%
+    filter(from == from_id, to == to_id) %>%
     pull(distance)
+
+  assert_that(is.number(res), msg = paste0("Results: ", str(res)))
+
+  res
 }
 
+#' @import tidygraph purrr dplyr
 complete_sub_graph <- function(graph, original_graph) {
-  plan(multiprocess)
 
-  avoid_edges <- graph %>%
-    as_tibble(active = "edges") %>%
-    pull(target)
-
+  # Get the subgraph edges as a data frame
   g_edges <- as_tibble(graph, active = "edges")
+
+  # Map original node ids to the new ids assigned within the subgraph
   node_crosswalk <- bind_rows(
     select(g_edges, new = from, old = from_id),
     select(g_edges, new = to, old = to_id)
   ) %>% distinct()
 
-  completed <- g_edges %>%
+  # Set up a table of new edges
+  edge_placeholders <- g_edges %>%
     complete(from, to) %>%
     # Join original IDs
     left_join(node_crosswalk, by = c("from" = "new")) %>%
@@ -139,62 +103,33 @@ complete_sub_graph <- function(graph, original_graph) {
     select(-old) %>%
     # No loops
     filter(from_id != to_id) %>%
-    anti_join(g_edges, by = c("from_id", "to_id")) %>%
+    # Don't duplicate the original subgraph edges
+    anti_join(g_edges, by = c("from_id", "to_id"))
+
+  # Fill out attributes for these new edges
+  completed <- edge_placeholders %>%
     mutate(
-      original = FALSE,
       # Calculate the weight of each of these new edges based on the path
       # distance between both nodes in the original network. N.B. the node IDs
       # must be the ones from the original graph, not the subnetwork, ergo using
       # from_id and to_id
-      weight = map2_dbl(from_id, to_id, function(x, y) {
-        path_weight_lookup %>%
-          filter(from == from_id, to == to_id) %>%
-          pull(distance)
-      }),
-      target = FALSE)
+      weight = map2_dbl(from_id, to_id, path_weight_lookup, weight_table = path_weight_lookup_table),
+      original = FALSE,
+      target = FALSE) %>%
+    # Remove all infinite edges
+    filter(!is.infinite(weight))
 
   bind_edges(graph, completed)
 }
-
-cg <- complete_sub_graph(subnetwork, original_graph = g)
-
-showme(cg)
-
-mst_edges <- to_minimum_spanning_tree(cg, weights = weight)[[1]]
-showme(mst_edges)
-
-
-
-%>%
-  activate(edges) %>%
-  mutate(mst = TRUE)
-
-ng <- cg %>%
-  bind_edges(mst_edges)
 
 # Simplify this "completed" network by eliminating all artificial edges for which
 # 1) the cost is over some threshold k (?)
 # 2) One parallel edge if it has the same cost
 
+#' @import tidygraph dplyr
 prune_complete_network <- function(graph, k = Inf) {
   graph %>%
     activate(edges) %>%
     # Always keep original edges
     filter(original == TRUE | weight < k)
 }
-
-cg
-pg <- prune_complete_network(cg, k = 30)
-pg
-showme(cg)
-
-mst <- to_minimum_spanning_tree(cg, weights = weight)
-showme(mst_g)
-
-mst_g <- g %>%
-  morph(to_minimum_spanning_tree) %>%
-  mutate(mst = TRUE) %>%
-  unmorph()
-mst_g
-
-showme(mst_g)
