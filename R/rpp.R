@@ -39,29 +39,37 @@ create_subnetwork <- function(graph) {
 # Complete this network by adding artificial edges. New artificial edges should
 # have weight defined as shortest path between each of its nodes from the
 # original network
-
-# TODO before calculating weight, REMOVE bridges so they can't be crossed
-# (this may lead to unreachable places, maybe?)
 #' @import tidygraph dplyr furrr future
 full_path_weights <- function(graph) {
-  plan(multiprocess)
   selected_nodes <- graph %>%
     as_tibble(active = "nodes") %>%
     filter(adjacent_to_selected) %>%
     pull(pid) %>%
     set_names()
 
-  res <- future_map_dfr(selected_nodes, function(x) {
-    search_index <- match(x, as_tibble(graph, "nodes")$pid)
-    graph %>%
-      activate(edges) %>%
-      filter(target == FALSE) %>%
-      activate(nodes) %>%
-      mutate(distance = node_distance_to(search_index, weights = NULL)) %>%
-      as_tibble() %>%
-      select(from = pid, distance)
-  }, .id = "to", .progress = TRUE) %>%
+  wo_targets <- graph %>%
+    activate(edges) %>%
+    filter(target == FALSE)
+
+  plan(multiprocess)
+  res <- future_map_dfr(selected_nodes, node_to_nodes_distance, targets = selected_nodes,
+                        graph = wo_targets, .id = "to") %>%
     mutate_at(vars(to), as.integer)
+}
+
+node_to_nodes_distance <- function(x, targets, graph, ...) {
+  original_ids <- as_tibble(graph, "nodes")$pid
+  search_index <- match(x, original_ids)
+  target_indices <- match(targets, original_ids)
+
+  assert_that(noNA(search_index))
+  assert_that(noNA(target_indices))
+
+  to_distance <- t(distances(graph, v = search_index, to = target_indices))[,1]
+
+  stopifnot(length(to_distance) == length(targets))
+
+  data_frame(from = targets, distance = to_distance)
 }
 
 #' @import assertthat dplyr
