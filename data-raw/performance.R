@@ -11,8 +11,8 @@ library(tibble)
 set.seed(10)
 devtools::load_all()
 
-node_sizes <- c(30, 50, 100, 200, 500, 1000, 2000, 3000)
-edge_counts <- c(5, 50, 100, 300, 500, 700, 1000)
+node_sizes <- c(30, 50, 100, 200, 500, 1000, 2000, 3000, 5000, 7000, 10000, 12000)
+edge_counts <- c(5, 50, 100, 300, 500, 700, 1000, 3000, 5000)
 
 gridsearch <- cross_df(list(n_nodes = node_sizes, n_edges = edge_counts))
 
@@ -21,9 +21,10 @@ any_incident_target <- function(x, graph) {
   any(edge_attr(graph, name = "target", index = as.integer(es)))
 }
 
-graph_battery <- pmap(gridsearch, function(n_nodes, n_edges) {
+plan(multiprocess)
+graph_battery <- future_pmap(gridsearch, function(n_nodes, n_edges) {
   message(n_nodes, "\t", n_edges)
-  g <- play_geometry(n = n_nodes, radius = 10/n_nodes, torus = TRUE)
+  g <- play_geometry(n = n_nodes, radius = 2/sqrt(n_nodes))
   if (n_edges > ecount(g)) return(NULL)
 
   which_e <- sample.int(ecount(g), size = n_edges)
@@ -50,7 +51,7 @@ c <- 0
 timed_weighting <- rerun(6, {
   c <<- c + 1
   suppressWarnings({
-    map_df(graph_battery[1], function(g) {
+    map_df(graph_battery, function(g) {
       v_count <- vcount(g)
       e_count <- ecount(g)
       s_count <- g %>% as_tibble("edges") %>% pull(target) %>% sum()
