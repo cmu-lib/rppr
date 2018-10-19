@@ -13,10 +13,9 @@ ggplot(timing_report, aes(x = v_count, y = value)) +
   geom_point() +
   labs(y = "seconds")
 
-timing_model <- lm(value ~ v_count*e_count*s_count, timing_report)
+timing_model <- lm(value ~ v_count * e_count * s_count, timing_report)
 
 summary(timing_model)
-
 
 pgh <- data_frame(
   v_count = 1853767,
