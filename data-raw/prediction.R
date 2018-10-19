@@ -9,14 +9,14 @@ timing_report <- timed_weighting %>%
   filter(name == "elapsed") %>%
   mutate(grouping = group_indices(., replicate, s_count))
 
-ggplot(timing_report, aes(x = v_count, color = as.factor(s_count), y = value, group = grouping)) +
+ggplot(timing_report, aes(x = v_count, y = value)) +
   geom_point() +
-  geom_line() +
   labs(y = "seconds")
 
 timing_model <- lm(value ~ v_count*e_count*s_count, timing_report)
 
 summary(timing_model)
+
 
 pgh <- data_frame(
   v_count = 1853767,
