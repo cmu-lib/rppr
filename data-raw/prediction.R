@@ -1,10 +1,8 @@
 library(igraph)
 library(dplyr)
-library(ggplot)
+library(ggplot2)
 
 load("pathweights_timing.rda")
-
-library(ggplot2)
 
 timing_report <- timed_weighting %>%
   filter(name == "elapsed")
