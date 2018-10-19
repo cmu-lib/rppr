@@ -11,12 +11,13 @@ library(tibble)
 set.seed(10)
 devtools::load_all()
 
-node_sizes <- c(10, 30, 50, 100, 200, 500, 1000)
-edge_counts <- c(5, 50, 100, 300, 500)
+node_sizes <- c(10, 30, 50, 100, 200, 500, 1000, 3000)
+edge_counts <- c(5, 50, 100, 300, 500, 700)
 
 gridsearch <- cross_df(list(n_nodes = node_sizes, n_edges = edge_counts))
 
 graph_battery <- pmap(gridsearch, function(n_nodes, n_edges) {
+  message(n_nodes, "\t", n_edges)
   g <- play_geometry(n = n_nodes, radius = 0.25, torus = TRUE)
   if (n_edges > ecount(g)) return(NULL)
 
@@ -45,33 +46,21 @@ graph_battery <- pmap(gridsearch, function(n_nodes, n_edges) {
     remove_unreachable_nodes()
 }) %>% compact()
 
+c <- 0
 timed_weighting <- rerun(6, {
-  map_df(graph_battery, function(g) {
-  enframe(system.time(full_path_weights(g)))
-}, .id = "battery_index")
-  }) %>%
+  c <<- c + 1
+  suppressWarnings({
+    map_df(graph_battery, function(g) {
+      message("Run ", c, "\t", "V: ", vcount(g), "\tE: ", ecount(g), "\t...", appendLF = FALSE)
+      res <- enframe(system.time(full_path_weights(g)))
+
+      message("done")
+
+      res
+
+    }, .id = "battery_index")
+  })
+}) %>%
   bind_rows(.id = "replicate")
 
 save(timed_weighting, file = "pathweights_timing.rda")
-
-# library(ggplot2)
-#
-# read_graph_settings <- function(g) {
-#   data_frame(
-#     v_count = vcount(g),
-#     e_count = ecount(g),
-#     s_count = g %>% as_tibble("edges") %>% pull(target) %>% sum()
-#   )
-# }
-#
-# graph_settings <- map_df(graph_battery, read_graph_settings, .id = "battery_index")
-#
-# timing_report <- timed_weighting %>%
-#   left_join(graph_settings, by = "battery_index") %>%
-#   filter(name == "elapsed")
-#
-# ggplot(timing_report, aes(x = v_count, color = as.factor(s_count), y = value)) +
-#   geom_point()
-#
-# timing_model <- lm(value ~ poly(v_count, 2) + poly(e_count, 2) + poly(s_count, 2), timing_report)
-# summary(timing_model)
