@@ -50,9 +50,14 @@ c <- 0
 timed_weighting <- rerun(6, {
   c <<- c + 1
   suppressWarnings({
-    map_df(graph_battery, function(g) {
-      message("Run ", c, "\t", "V: ", vcount(g), "\tE: ", ecount(g), "\t...", appendLF = FALSE)
-      res <- enframe(system.time(full_path_weights(g)))
+    map_df(graph_battery[1], function(g) {
+      v_count <- vcount(g)
+      e_count <- ecount(g)
+      s_count <- g %>% as_tibble("edges") %>% pull(target) %>% sum()
+
+      message("Run ", c, "\t", "V: ", v_count, "\tE: ", s_count, "\t...", appendLF = FALSE)
+      res <- enframe(system.time(full_path_weights(g))) %>%
+        mutate(v_count = v_count, e_count = e_count, s_count = s_count)
 
       message("done")
 
