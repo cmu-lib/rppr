@@ -11,14 +11,19 @@ library(tibble)
 set.seed(10)
 devtools::load_all()
 
-node_sizes <- c(10, 30, 50, 100, 200, 500, 1000, 3000)
-edge_counts <- c(5, 50, 100, 300, 500, 700)
+node_sizes <- c(30, 50, 100, 200, 500, 1000, 2000, 3000)
+edge_counts <- c(5, 50, 100, 300, 500, 700, 1000)
 
 gridsearch <- cross_df(list(n_nodes = node_sizes, n_edges = edge_counts))
 
+any_incident_target <- function(x, graph) {
+  es <- incident(graph, x)
+  any(edge_attr(graph, name = "target", index = as.integer(es)))
+}
+
 graph_battery <- pmap(gridsearch, function(n_nodes, n_edges) {
   message(n_nodes, "\t", n_edges)
-  g <- play_geometry(n = n_nodes, radius = 0.25, torus = TRUE)
+  g <- play_geometry(n = n_nodes, radius = 10/n_nodes, torus = TRUE)
   if (n_edges > ecount(g)) return(NULL)
 
   which_e <- sample.int(ecount(g), size = n_edges)
@@ -37,12 +42,7 @@ graph_battery <- pmap(gridsearch, function(n_nodes, n_edges) {
       weight = sample.int(10, size = ecount(g), replace = TRUE),
       target = e) %>%
     activate(nodes) %>%
-    mutate(adjacent_to_selected = map_local_lgl(.f = function(neighborhood, ...) {
-      neighborhood %>%
-        as_tibble(active = "edges") %>%
-        pull(target) %>%
-        any()
-    })) %>%
+    mutate(adjacent_to_selected = map_lgl(pid, any_incident_target, graph = .)) %>%
     remove_unreachable_nodes()
 }) %>% compact()
 
