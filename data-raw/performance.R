@@ -45,10 +45,22 @@ graph_battery <- future_pmap(gridsearch, function(n_nodes, n_edges) {
     activate(nodes) %>%
     mutate(adjacent_to_selected = map_lgl(pid, any_incident_target, graph = .)) %>%
     remove_unreachable_nodes()
+
+  sampled_edges <- as_tibble(g, "edges") %>%
+    sample_frac(size = 0.1)
+
+  mst_g <- g %>%
+    convert(to_minimum_spanning_tree)
+
+  augmented_mst_g <- mst_g %>%
+    bind_edges(sampled_edges)
+
+  augmented_mst_g
+
 }) %>% compact()
 
 c <- 0
-timed_weighting <- rerun(6, {
+timed_weighting <- rerun(1, {
   c <<- c + 1
   suppressWarnings({
     map_df(graph_battery, function(g) {
