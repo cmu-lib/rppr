@@ -59,7 +59,7 @@ graph_battery <- future_pmap(gridsearch, function(n_nodes, n_edges) {
 
 }) %>% compact()
 
-graphc <- 0
+c <- 0
 timed_weighting <- rerun(20, {
   c <<- c + 1
   suppressWarnings({
