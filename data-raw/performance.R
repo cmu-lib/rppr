@@ -1,3 +1,8 @@
+pkgconfig::set_config(
+  "drake::strings_in_dots" = "literals",
+  "drake::verbose" = 4,
+  "drake::lazy" = TRUE)
+
 library(purrr)
 library(igraph)
 library(bench)
@@ -7,23 +12,34 @@ library(dplyr)
 library(assertthat)
 library(future)
 library(tibble)
-
-set.seed(10)
+library(drake)
 devtools::load_all()
 
-node_sizes <- c(30, 50, 100, 200, 500, 1000, 2000, 3000, 5000, 7000, 10000, 12000)
+node_sizes <- c(30, 50, 100, 200, 500, 1000, 2000, 3000, 5000, 7000, 10000, 12000, 15000)
 edge_counts <- c(5, 50, 100, 300, 500, 700, 1000, 3000, 5000)
 
 gridsearch <- cross_df(list(n_nodes = node_sizes, n_edges = edge_counts))
 
-any_incident_target <- function(x, graph) {
-  es <- incident(graph, x)
-  any(edge_attr(graph, name = "target", index = as.integer(es)))
-}
+network_plan <- drake_plan(
+  input_graph = generate_connected_graph(n_nodes = nn__, n_edges = ne__)
+)
 
-plan(multiprocess)
-graph_battery <- future_pmap(gridsearch, function(n_nodes, n_edges) {
-  message(n_nodes, "\t", n_edges)
+expanded_plan <- evaluate_plan(network_plan, rules = list(
+  nn__ = node_sizes,
+  ne__ = edge_counts
+))
+
+measure_plan <- drake_plan(
+  timed_run = timed_weighting(g = g__)
+)
+
+measurement_plan <- evaluate_plan(measure_plan, rules = list(g__ = expanded_plan$target))
+
+replicated_plan <- expand_plan(measurement_plan, values = 1:20)
+
+full_plan <- bind_plans(expanded_plan, replicated_plan)
+
+generate_connected_graph <- function(n_nodes, n_edges) {
   g <- play_geometry(n = n_nodes, radius = 2/sqrt(n_nodes))
   if (n_edges > ecount(g)) return(NULL)
 
@@ -56,29 +72,20 @@ graph_battery <- future_pmap(gridsearch, function(n_nodes, n_edges) {
     bind_edges(sampled_edges)
 
   augmented_mst_g
+}
 
-}) %>% compact()
+any_incident_target <- function(x, graph) {
+  es <- incident(graph, x)
+  any(edge_attr(graph, name = "target", index = as.integer(es)))
+}
 
-c <- 0
-timed_weighting <- rerun(20, {
-  c <<- c + 1
-  suppressWarnings({
-    map_df(graph_battery, function(g) {
-      v_count <- vcount(g)
-      e_count <- ecount(g)
-      s_count <- g %>% as_tibble("edges") %>% pull(target) %>% sum()
+timed_weighting <- function(g) {
+    v_count <- vcount(g)
+    e_count <- ecount(g)
+    s_count <- g %>% as_tibble("edges") %>% pull(target) %>% sum()
 
-      message("Run ", c, "\t", "V: ", v_count, "\tE: ", s_count, "\t...", appendLF = FALSE)
-      res <- enframe(system.time(full_path_weights(g))) %>%
+    suppressWarnings({
+      enframe(system.time(full_path_weights(g))) %>%
         mutate(v_count = v_count, e_count = e_count, s_count = s_count)
-
-      message("done")
-
-      res
-
-    }, .id = "battery_index")
-  })
-}) %>%
-  bind_rows(.id = "replicate")
-
-save(timed_weighting, file = "pathweights_timing.rda")
+    })
+}
