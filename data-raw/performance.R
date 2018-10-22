@@ -106,10 +106,10 @@ timed_weighting <- function(g) {
 prediction_plan <- drake_plan(
 
   # Collect all timings from cache
-  timed_weighting = map_df(replicated_plan$target, readd, character_only = TRUE, verbose = FALSE, .id = "simulation"),
+  all_timings = map_df(replicated_plan$target, readd, character_only = TRUE, verbose = FALSE, .id = "simulation"),
 
   # Keep only the "elapsed" timings
-  timing_report = timed_weighting %>%
+  timing_report = all_timings %>%
     # Only train on full elapsed time with at least 2 required edges
     filter(name == "elapsed", s_count >= 2) %>%
     # Randomize data order
@@ -118,11 +118,11 @@ prediction_plan <- drake_plan(
     arrange(s_count),
 
   # Partition training and test data, then evaluate
-  train_data = timing_report %>% filter(v_count < 12000),
-  test_data = timing_report %>% filter(v_count >= 12000),
+  train_data = timing_report %>% filter(v_count < 13000),
+  test_data = timing_report %>% filter(v_count >= 13000),
 
   # Declare model formula for Dijkstra algorithm computed pairwise
-  algo_formula = formula(value ~ e_count + poly(v_count, 2) * poly(s_count, 2)),
+  algo_formula = formula(value ~ poly(e_count, 2) * poly(s_count, 2)),
 
   timing_model = lm(algo_formula, data = train_data),
   test_prediction = test_data %>% add_column(pred = predict(timing_model, newdata = test_data)),
@@ -137,6 +137,13 @@ prediction_plan <- drake_plan(
   pgh_low = seconds_to_period(pgh_prediction$fit + pgh_prediction$se.fit/2),
 )
 
+# Big test ----
+
+big_plan <- drake_plan(
+  big_g = generate_connected_graph(n_nodes = 1853767, n_edges = 2667),
+  big_time = timed_weighting(big_g)
+)
+
 # Merge ----
 
 # Merge the entire plan together
@@ -144,4 +151,8 @@ rppr_plan <- bind_plans(expanded_plan,
                         gathered_expanded_plan,
                         replicated_plan,
                         gathered_replicated_plan,
-                        prediction_plan)
+                        prediction_plan,
+                        big_plan)
+
+
+
