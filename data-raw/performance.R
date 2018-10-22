@@ -109,28 +109,32 @@ prediction_plan <- drake_plan(
   timed_weighting = map_df(replicated_plan$target, readd, character_only = TRUE, verbose = FALSE, .id = "simulation"),
 
   # Keep only the "elapsed" timings
-  timing_report = timed_weighting %>% filter(name == "elapsed", s_count >= 2),
+  timing_report = timed_weighting %>%
+    # Only train on full elapsed time with at least 2 required edges
+    filter(name == "elapsed", s_count >= 2) %>%
+    # Randomize data order
+    sample_frac(1) %>%
+    # Then order by edge count
+    arrange(s_count),
 
   # Partition training and test data, then evaluate
   train_data = timing_report %>% filter(v_count < 12000),
-  test_data = timing_report %>% filter(v_count == 12000),
+  test_data = timing_report %>% filter(v_count >= 12000),
 
   # Declare model formula for Dijkstra algorithm computed pairwise
-  algo_formula = formula(value ~ e_count * v_count * s_count),
+  algo_formula = formula(value ~ e_count + poly(v_count, 2) * poly(s_count, 2)),
 
   timing_model = lm(algo_formula, data = train_data),
-  test_prediction = predict(timing_model, newdata = test_data),
-  test_residuals = test_data$value - test_prediction,
+  test_prediction = test_data %>% add_column(pred = predict(timing_model, newdata = test_data)),
 
   # Produce a full model
   full_timing_model = lm(algo_formula, timing_report),
-
 
   pgh = data_frame(v_count = 1853767, e_count = 245821, s_count = 2667),
 
   pgh_prediction = predict(full_timing_model, newdata = pgh, se.fit = TRUE),
   pgh_high = seconds_to_period(pgh_prediction$fit - pgh_prediction$se.fit/2),
-  pgh_low = seconds_to_period(pgh_prediction$fit + pgh_prediction$se.fit/2)
+  pgh_low = seconds_to_period(pgh_prediction$fit + pgh_prediction$se.fit/2),
 )
 
 # Merge ----
