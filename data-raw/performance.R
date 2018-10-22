@@ -44,10 +44,7 @@ replicated_plan <- expand_plan(measurement_plan, values = 1:20)
 
 gathered_replicated_plan <- gather_plan(replicated_plan, target = "timings", gather = "rbind")
 
-# Merge the entire plan together
-rppr_plan <- bind_plans(expanded_plan, gathered_expanded_plan, replicated_plan, gathered_replicated_plan)
-
-# Functions ----
+# Simulations ----
 
 generate_connected_graph <- function(n_nodes, n_edges) {
   g <- play_geometry(n = n_nodes, radius = 2/sqrt(n_nodes))
@@ -102,3 +99,44 @@ timed_weighting <- function(g) {
       mutate(v_count = v_count, e_count = e_count, s_count = s_count)
   })
 }
+
+# Prediction ----
+
+prediction_plan <- drake_plan(
+
+  # Collect all timings from cache
+  timed_weighting = map_df(replicated_plan$target, readd, character_only = TRUE, verbose = FALSE, .id = "simulation"),
+
+  # Keep only the "elapsed" timings
+  timing_report = timed_weighting %>% filter(name == "elapsed", s_count >= 2),
+
+  # Partition training and test data, then evaluate
+  train_data = timing_report %>% filter(v_count < 12000),
+  test_data = timing_report %>% filter(v_count == 12000),
+
+  # Declare model formula for Dijkstra algorithm computed pairwise
+  algo_formula = formula(value ~ e_count * v_count * s_count),
+
+  timing_model = lm(algo_formula, data = train_data),
+  test_prediction = predict(timing_model, newdata = test_data),
+  test_residuals = test_data$value - test_prediction,
+
+  # Produce a full model
+  full_timing_model = lm(algo_formula, timing_report),
+
+
+  pgh = data_frame(v_count = 1853767, e_count = 245821, s_count = 2667),
+
+  pgh_prediction = predict(full_timing_model, newdata = pgh, se.fit = TRUE),
+  pgh_high = seconds_to_period(pgh_prediction$fit - pgh_prediction$se.fit/2),
+  pgh_low = seconds_to_period(pgh_prediction$fit + pgh_prediction$se.fit/2)
+)
+
+# Merge ----
+
+# Merge the entire plan together
+rppr_plan <- bind_plans(expanded_plan,
+                        gathered_expanded_plan,
+                        replicated_plan,
+                        gathered_replicated_plan,
+                        prediction_plan)
