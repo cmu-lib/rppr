@@ -1,3 +1,5 @@
+# Drake ----
+
 pkgconfig::set_config(
   "drake::strings_in_dots" = "literals",
   "drake::verbose" = 4,
@@ -16,10 +18,9 @@ library(drake)
 devtools::load_all()
 
 node_sizes <- c(30, 50, 100, 200, 500, 1000, 2000, 3000, 5000, 7000, 10000, 12000, 15000)
-edge_counts <- c(5, 50, 100, 300, 500, 700, 1000, 3000, 5000)
+edge_counts <- c(5, 50, 100, 300, 500, 700, 1000, 3000, 5000, 6000, 8000)
 
-gridsearch <- cross_df(list(n_nodes = node_sizes, n_edges = edge_counts))
-
+# Create template "network_plan" and then expand it across all combinations
 network_plan <- drake_plan(
   input_graph = generate_connected_graph(n_nodes = nn__, n_edges = ne__)
 )
@@ -29,6 +30,10 @@ expanded_plan <- evaluate_plan(network_plan, rules = list(
   ne__ = edge_counts
 ))
 
+# Nest all of these graphs under one target "simulated_graphs"
+gathered_expanded_plan <- gather_plan(expanded_plan, target = "simulated_graphs", gather = "rbind")
+
+# Create template "measure_plan", expand it across all graphs, and then replicate measurements
 measure_plan <- drake_plan(
   timed_run = timed_weighting(g = g__)
 )
@@ -37,7 +42,12 @@ measurement_plan <- evaluate_plan(measure_plan, rules = list(g__ = expanded_plan
 
 replicated_plan <- expand_plan(measurement_plan, values = 1:20)
 
-full_plan <- bind_plans(expanded_plan, replicated_plan)
+gathered_replicated_plan <- gather_plan(replicated_plan, target = "timings", gather = "rbind")
+
+# Merge the entire plan together
+rppr_plan <- bind_plans(expanded_plan, gathered_expanded_plan, replicated_plan, gathered_replicated_plan)
+
+# Functions ----
 
 generate_connected_graph <- function(n_nodes, n_edges) {
   g <- play_geometry(n = n_nodes, radius = 2/sqrt(n_nodes))
@@ -80,12 +90,15 @@ any_incident_target <- function(x, graph) {
 }
 
 timed_weighting <- function(g) {
-    v_count <- vcount(g)
-    e_count <- ecount(g)
-    s_count <- g %>% as_tibble("edges") %>% pull(target) %>% sum()
+  # If the graph combo was invalid, return null and move on
+  if (is.null(g)) return(NULL)
 
-    suppressWarnings({
-      enframe(system.time(full_path_weights(g))) %>%
-        mutate(v_count = v_count, e_count = e_count, s_count = s_count)
-    })
+  v_count <- vcount(g)
+  e_count <- ecount(g)
+  s_count <- g %>% as_tibble("edges") %>% pull(target) %>% sum()
+
+  suppressWarnings({
+    enframe(system.time(full_path_weights(g))) %>%
+      mutate(v_count = v_count, e_count = e_count, s_count = s_count)
+  })
 }
