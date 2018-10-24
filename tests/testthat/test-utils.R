@@ -37,3 +37,9 @@ test_that("Get edge ids", {
   edge_attr(malformed_graph, ".oid") <- rep(5, e_count)
   expect_error(get_edge_index(malformed_graph, 5))
 })
+
+test_that("Add target status", {
+  targeted_graph <- add_target_status(g, targets = e)
+
+  expect_is(edge_attr(targeted_graph, ".target"), "logical")
+})
