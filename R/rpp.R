@@ -8,6 +8,21 @@ rpp <- function(graph, edgeset) {
 
 }
 
+is_graph_decorated <- function(graph) {
+  inherits(graph, "rpp_graph") &
+    ".oid" %in% vertex_attr_names(graph) &
+    ".oid" %in% edge_attr_names(graph) &
+    ".target" %in% edge_attr_names(graph)
+}
+
+# Decorate a graph with edge, node, and target ids, and add class of rpp_graph as sign to later functions
+decorate_graph <- function(graph, edgeset) {
+  decorated_graph <- add_oids(graph)
+  target_lgl <- seq_len(ecount(decorated_graph)) %in% edgeset
+  decorated_graph <- add_target_status(decorated_graph, target_lgl)
+  structure(decorated_graph, class = "rpp_graph")
+}
+
 # Create subnetwork of required edges and their nodes
 #' @import tidygraph
 create_subnetwork <- function(graph) {
