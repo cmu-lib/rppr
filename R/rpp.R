@@ -8,13 +8,6 @@ rpp <- function(graph, edgeset) {
 
 }
 
-#' @import tidygraph
-remove_unreachable_nodes <- function(graph) {
-  graph %>%
-    activate(nodes) %>%
-    filter(!node_is_isolated())
-}
-
 #' @import ggraph
 showme <- function(g) {
   ggraph(g, layout = "nicely") +
