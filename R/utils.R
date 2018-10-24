@@ -16,21 +16,17 @@ remove_unreachable_nodes <- function(graph) {
 
 # Add original node and edge ids to a graph that can be traced during transformations ----
 add_oids <- function(graph) {
-  graph %>%
-    add_node_oids() %>%
-    add_edge_oids()
+  add_edge_oids(add_node_oids(graph))
 }
 
 add_node_oids <- function(graph) {
-  graph %>%
-    activate(nodes) %>%
-    mutate(.oid = dplyr::row_number())
+  vertex_attr(graph, ".oid") <- seq_len(vcount(graph))
+  graph
 }
 
 add_edge_oids <- function(graph) {
-  graph %>%
-    activate(edges) %>%
-    mutate(.oid = dplyr::row_number())
+  edge_attr(graph, ".oid") <- seq_len(ecount(graph))
+  graph
 }
 
 # Add target attribute to edges
@@ -38,7 +34,7 @@ add_target_status <- function(graph, targets) {
   assert_that(is.logical(targets))
   assert_that(ecount(graph) == length(targets), msg = "targets must be the same length as the number of edges in the graph")
 
-  E(graph)[[".target"]] <- targets
+  edge_attr(graph, ".target") <- targets
   graph
 }
 
