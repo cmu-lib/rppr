@@ -16,3 +16,5 @@ e <- seq_len(e_count) %in% which_e
 
 island_g <- g %>%
   bind_nodes(data.frame(x = 0, y = 0))
+
+subgraph_g <- create_subnetwork(g)
