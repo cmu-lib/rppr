@@ -19,12 +19,16 @@ Imports:
     dplyr,
     furrr,
     future,
-    ggraph,
     purrr,
     tidygraph
 Suggests:
     covr,
+    ggraph,
+    knitr,
+    rmarkdown,
     testthat
+VignetteBuilder: 
+    knitr
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)

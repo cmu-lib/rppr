@@ -1,4 +1,24 @@
-#' @import ggraph
+---
+title: "Solving the Rural Postman Problem with RPPR and Tidygraph"
+author: "Matthew Lincoln"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+
+library(ggraph)
+```
+
+```{r plotting-helper}
 showme <- function(g) {
   ggraph(g, layout = "nicely") +
     geom_edge_link(aes(color = target, alpha = original, width = weight),
@@ -9,3 +29,5 @@ showme <- function(g) {
     scale_edge_alpha_manual(values = c("TRUE" = 1, "FALSE" = 0.2), guide = FALSE) +
     theme_graph()
 }
+
+```
