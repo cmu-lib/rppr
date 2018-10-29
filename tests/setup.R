@@ -21,4 +21,3 @@ island_g <- g %>%
 numbered_graph <- add_oids(g)
 
 rppr_graph <- decorate_graph(g, which_e)
-
