@@ -42,8 +42,8 @@ node_to_nodes_distance <- function(x, targets, graph, ...) {
   search_index <- match(x, original_ids)
   target_indices <- match(targets, original_ids)
 
-  assertthat::assert_that(noNA(search_index))
-  assertthat::assert_that(noNA(target_indices))
+  assertthat::assert_that(assertthat::noNA(search_index))
+  assertthat::assert_that(assertthat::noNA(target_indices))
 
   to_distance <- t(distances(graph, v = search_index, to = target_indices))[,1]
 
