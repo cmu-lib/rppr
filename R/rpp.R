@@ -9,14 +9,12 @@ rpp <- function(graph, edgeset) {
 }
 
 # Create subnetwork of required edges and their nodes
-#' @import igraph
 create_subnetwork <- function(graph) {
   subgraph.edges(graph,
                 eids = E(graph)[which(edge_attr(graph, ".target") == TRUE)],
                 delete.vertices = TRUE)
 }
 
-#' @import igraph
 target_adjacent_node_oids <- function(graph) {
   purrr::set_names(vertex_attr(create_subnetwork(graph), ".oid"))
 }
@@ -24,7 +22,7 @@ target_adjacent_node_oids <- function(graph) {
 # Complete this network by adding artificial edges. New artificial edges should
 # have weight defined as shortest path between each of its nodes from the
 # original network
-#' @import igraph furrr future
+#' @import furrr future
 full_path_weights <- function(graph) {
   selected_nodes <- target_adjacent_node_oids(graph)
 
@@ -72,7 +70,7 @@ path_weight_lookup <- function(from_id, to_id, weight_table) {
 complete_sub_graph <- function(graph, original_graph) {
 
   # Get the subgraph edges as a data frame
-  g_edges <- as_tibble(graph, active = "edges")
+  g_edges <- as_data_frame(graph, what = "edges")
 
   # Map original node ids to the new ids assigned within the subgraph
   node_crosswalk <- bind_rows(
