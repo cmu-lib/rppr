@@ -24,3 +24,13 @@ test_that("node-node distance", {
   expect_equivalent(test_distance[["from"]], dist_targets)
   expect_is(test_distance[["distance"]], "numeric")
 })
+
+test_that("full path weights", {
+  fpw <- full_path_weights(rppr_graph)
+  incident_nodes <- target_adjacent_node_oids(rppr_graph)
+
+  expect_is(fpw, "data.frame")
+  expect_equivalent(sort(unique(fpw[["to"]])), incident_nodes)
+  expect_equivalent(sort(unique(fpw[["from"]])), incident_nodes)
+  expect_is(fpw[["distance"]], "numeric")
+})
