@@ -111,15 +111,3 @@ complete_sub_graph <- function(graph, original_graph) {
 
   bind_edges(graph, completed)
 }
-
-# Simplify this "completed" network by eliminating all artificial edges for which
-# 1) the cost is over some threshold k (?)
-# 2) One parallel edge if it has the same cost
-
-#' @import tidygraph dplyr
-prune_complete_network <- function(graph, k = Inf) {
-  graph %>%
-    activate(edges) %>%
-    # Always keep original edges
-    filter(original == TRUE | weight < k)
-}
