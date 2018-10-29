@@ -2,6 +2,7 @@
 
 library(tidygraph)
 library(igraph)
+library(purrr)
 set.seed(10)
 
 n_count <- 30
