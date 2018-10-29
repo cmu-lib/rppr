@@ -6,7 +6,6 @@ test_that("remove unreachable nodes", {
 })
 
 test_that("Add node and edge ids", {
-  numbered_graph <- add_oids(g)
   expect_equivalent(get_node_index(numbered_graph, 5), 5)
   expect_equivalent(get_edge_index(numbered_graph, 5), 5)
 })
