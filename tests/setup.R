@@ -18,3 +18,6 @@ island_g <- g %>%
   bind_nodes(data.frame(x = 0, y = 0))
 
 numbered_graph <- add_oids(g)
+
+rppr_graph <- decorate_graph(g, which_e)
+

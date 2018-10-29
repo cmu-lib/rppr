@@ -8,49 +8,36 @@ rpp <- function(graph, edgeset) {
 
 }
 
-is_graph_decorated <- function(graph) {
-  inherits(graph, "rpp_graph") &
-    ".oid" %in% vertex_attr_names(graph) &
-    ".oid" %in% edge_attr_names(graph) &
-    ".target" %in% edge_attr_names(graph)
-}
-
-# Decorate a graph with edge, node, and target ids, and add class of rpp_graph as sign to later functions
-decorate_graph <- function(graph, edgeset) {
-  decorated_graph <- add_oids(graph)
-  target_lgl <- seq_len(ecount(decorated_graph)) %in% edgeset
-  decorated_graph <- add_target_status(decorated_graph, target_lgl)
-  structure(decorated_graph, class = c(class(decorated_graph), "rpp_graph"))
-}
-
 # Create subnetwork of required edges and their nodes
-#' @import tidygraph
+#' @import igraph
 create_subnetwork <- function(graph) {
-  graph %>%
-    activate(edges) %>%
-    filter(target == TRUE) %>%
-    remove_unreachable_nodes()
+  subgraph.edges(graph,
+                eids = E(graph)[which(edge_attr(graph, ".target") == TRUE)],
+                delete.vertices = TRUE)
+}
+
+#' @import igraph
+target_adjacent_node_oids <- function(graph) {
+  purrr::set_names(vertex_attr(create_subnetwork(graph), ".oid"))
 }
 
 # Complete this network by adding artificial edges. New artificial edges should
 # have weight defined as shortest path between each of its nodes from the
 # original network
-#' @import tidygraph dplyr furrr future
+#' @import igraph furrr future
 full_path_weights <- function(graph) {
-  selected_nodes <- graph %>%
-    as_tibble(active = "nodes") %>%
-    filter(adjacent_to_selected) %>%
-    pull(pid) %>%
-    set_names()
+  selected_nodes <- target_adjacent_node_oids(graph)
 
-  wo_targets <- graph %>%
-    activate(edges) %>%
-    filter(target == FALSE)
+
+  wo_targets <- subset.edges(graph,
+                             eids = E(graph)[which(!(edge_attr(graph, ".target")))],
+                             delete.vertices = FALSE)
 
   plan(multiprocess)
   res <- future_map_dfr(selected_nodes, node_to_nodes_distance, targets = selected_nodes,
-                        graph = wo_targets, .id = "to") %>%
-    mutate_at(vars(to), as.integer)
+                        graph = wo_targets, .id = "to")
+  res[["to"]] <- as.integer(res[["to"]])
+  res
 }
 
 node_to_nodes_distance <- function(x, targets, graph, ...) {

@@ -13,14 +13,14 @@ License: MIT + file LICENSE
 URL: https://github.com/dSHARP-CMU/rppr
 BugReports: https://github.com/dSHARP-CMU/rppr/issues
 Depends:
-    R (>= 3.5.1)
+    R (>= 3.5.1),
+    igraph
 Imports:
     assertthat,
     dplyr,
     furrr,
     future,
-    purrr,
-    tidygraph
+    purrr
 Suggests:
     covr,
     ggraph,
