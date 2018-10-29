@@ -38,7 +38,7 @@ full_path_weights <- function(graph) {
 }
 
 node_to_nodes_distance <- function(x, targets, graph, ...) {
-  original_ids <- as_tibble(graph, "nodes")$pid
+  original_ids <- vertex_attr(graph, ".oid")
   search_index <- match(x, original_ids)
   target_indices <- match(targets, original_ids)
 
@@ -47,9 +47,9 @@ node_to_nodes_distance <- function(x, targets, graph, ...) {
 
   to_distance <- t(distances(graph, v = search_index, to = target_indices))[,1]
 
-  stopifnot(length(to_distance) == length(targets))
+  assertthat::assert_that(length(to_distance) == length(targets))
 
-  data_frame(from = targets, distance = to_distance)
+  data.frame(from = targets, distance = to_distance)
 }
 
 #' @import assertthat dplyr

@@ -16,3 +16,11 @@ test_that("target adjacent node ids", {
     # Every edge set should include at least one target edge
     function(x) any(edge_attr(rppr_graph, name = ".target", index = x)))))
 })
+
+test_that("node-node distance", {
+  dist_source <- 1
+  dist_targets <- c(5, 6, 7)
+  test_distance <- node_to_nodes_distance(dist_source, dist_targets, rppr_graph)
+  expect_equivalent(test_distance[["from"]], dist_targets)
+  expect_is(test_distance[["distance"]], "numeric")
+})
