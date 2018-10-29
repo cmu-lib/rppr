@@ -18,8 +18,8 @@ test_that("target adjacent node ids", {
 })
 
 test_that("node-node distance", {
-  dist_source <- 1
-  dist_targets <- c(5, 6, 7)
+  dist_source <- 1L
+  dist_targets <- c(5L, 6L, 7L)
   test_distance <- node_to_nodes_distance(dist_source, dist_targets, rppr_graph)
   expect_equivalent(test_distance[["from"]], dist_targets)
   expect_is(test_distance[["distance"]], "numeric")
