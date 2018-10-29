@@ -28,8 +28,7 @@ target_adjacent_node_oids <- function(graph) {
 full_path_weights <- function(graph) {
   selected_nodes <- target_adjacent_node_oids(graph)
 
-
-  wo_targets <- subset.edges(graph,
+  wo_targets <- subgraph.edges(graph,
                              eids = E(graph)[which(!(edge_attr(graph, ".target")))],
                              delete.vertices = FALSE)
 
