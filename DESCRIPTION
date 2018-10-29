@@ -17,6 +17,7 @@ Depends:
     igraph
 Imports:
     assertthat,
+    tidygraph,
     dplyr,
     furrr,
     future,
