@@ -40,5 +40,11 @@ test_that("Get edge ids", {
 test_that("Add target status", {
   targeted_graph <- add_target_status(g, targets = e)
 
+  # Error if a vector of invalid size is given
+  expect_error(add_target_status(g, targets = c(TRUE, FALSE, TRUE)))
+
+  # Error if a non-logical vector is given
+  expect_error(add_target_status(g, targets = c(1024L)))
+
   expect_is(edge_attr(targeted_graph, ".target"), "logical")
 })
