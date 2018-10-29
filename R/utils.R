@@ -14,7 +14,7 @@ remove_unreachable_nodes <- function(graph) {
     filter(!node_is_isolated())
 }
 
-# Add original node and edge ids to a graph that can be traced during transformations ----
+# Add original node and edge ids to a graph that can be traced during transformations
 add_oids <- function(graph) {
   add_edge_oids(add_node_oids(graph))
 }
