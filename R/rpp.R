@@ -44,8 +44,8 @@ node_to_nodes_distance <- function(x, targets, graph, ...) {
   search_index <- match(x, original_ids)
   target_indices <- match(targets, original_ids)
 
-  assert_that(noNA(search_index))
-  assert_that(noNA(target_indices))
+  assertthat::assert_that(noNA(search_index))
+  assertthat::assert_that(noNA(target_indices))
 
   to_distance <- t(distances(graph, v = search_index, to = target_indices))[,1]
 
@@ -56,8 +56,8 @@ node_to_nodes_distance <- function(x, targets, graph, ...) {
 
 #' @import assertthat dplyr
 path_weight_lookup <- function(from_id, to_id, weight_table) {
-  assert_that(is.count(from_id))
-  assert_that(is.count(to_id))
+  assertthat::assert_that(assertthat::is.count(from_id))
+  assertthat::assert_that(assertthat::is.count(to_id))
 
   res <- weight_table %>%
     filter(from == from_id, to == to_id) %>%
