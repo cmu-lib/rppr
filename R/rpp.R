@@ -20,7 +20,7 @@ decorate_graph <- function(graph, edgeset) {
   decorated_graph <- add_oids(graph)
   target_lgl <- seq_len(ecount(decorated_graph)) %in% edgeset
   decorated_graph <- add_target_status(decorated_graph, target_lgl)
-  structure(decorated_graph, class = "rpp_graph")
+  structure(decorated_graph, class = c(class(decorated_graph), "rpp_graph"))
 }
 
 # Create subnetwork of required edges and their nodes
